@@ -8,11 +8,6 @@ This project is a fully containerized E-Shop application developed for the "Clou
 
 The system leverages **Apache Kafka** for asynchronous communication, ensuring that order placement and stock reservation happen in a decoupled, reliable manner. **Keycloak** is integrated to handle all Authentication and Authorization, enforcing strict role-based access control (RBAC) for "Sellers" and "Customers." Data persistence is managed via dedicated **PostgreSQL** databases for each service to ensure loose coupling.
 
-Key Features:
-* [cite_start]**Microservices Architecture:** Independent services for Products and Orders.
-* [cite_start]**Event-Driven Logic:** Uses Kafka to handle stock validation asynchronously (Order Pending -> Stock Check -> Success/Reject).
-* [cite_start]**Centralized Security:** Keycloak handles login/registration and protects API endpoints via Bearer Tokens.
-* [cite_start]**Containerization:** Fully orchestrated using Docker and Docker Compose.
 
 ## Getting Started
 
@@ -20,9 +15,7 @@ Key Features:
 
 Before running the application, ensure you have the following installed on your operating system:
 
-* **Docker Desktop** (v4.0+ recommended) - Essential for running containers.
-* **Git** - To clone the repository.
-* **Operating System:** Windows 10/11 (with WSL2), macOS, or Linux.
+* **Docker Desktop** (v4.0+ recommended) - For running containers.
 * **Ports:** Ensure the following ports are free on your host machine:
     * `3000` (Frontend)
     * `5000` (Product Service)

@@ -29,7 +29,7 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - "9094:9094" # External access if needed (optional)
+      - "9094:9094"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -56,7 +56,6 @@ services:
       POSTGRES_DB: eshop_db
     volumes:
       - postgres_products_data:/var/lib/postgresql/data
-      # Auto-init script
       - ./infrastructure/database/init_eshop_db.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - eshop-net
@@ -74,7 +73,6 @@ services:
       POSTGRES_DB: orders_db
     volumes:
       - postgres_orders_data:/var/lib/postgresql/data
-      # Auto-init script
       - ./infrastructure/database/init_orders_db.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - eshop-net
@@ -83,7 +81,6 @@ services:
       interval: 5s
       retries: 5
 
-  # Database for Keycloak
   db-keycloak:
     image: postgres:15-alpine
     container_name: db-keycloak
@@ -112,7 +109,6 @@ services:
       - "8080:8080"
     command: start-dev --import-realm
     volumes:
-      # Mount the realm file for auto-import
       - ./infrastructure/keycloak/eshop-realm.json:/opt/keycloak/data/import/realm.json
     networks:
       - eshop-net
@@ -121,7 +117,7 @@ services:
     build: ./services/product-service
     container_name: product-service
     ports:
-      - "5000:5000" # Expose for Frontend access (Browser -> Host -> Container)
+      - "5000:5000" 
     environment:
       PORT: 5000
       DB_HOST: db-products
@@ -141,12 +137,11 @@ services:
     networks:
       - eshop-net
 
-  # Order Service
   order-service:
     build: ./services/order-service
     container_name: order-service
     ports:
-      - "5001:5001" # Expose for Frontend access
+      - "5001:5001" 
     environment:
       PORT: 5001
       DB_HOST: db-orders
@@ -166,7 +161,6 @@ services:
     networks:
       - eshop-net
 
-  # Frontend Service
   frontend:
     build: ./services/frontend
     container_name: frontend
