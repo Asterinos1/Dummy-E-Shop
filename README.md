@@ -27,8 +27,8 @@ Before running the application, ensure you have the following installed on your 
 
 1.  **Clone the Repository**
     ```bash
-    git clone [https://github.com/yourusername/e-shop-cloud-native.git](https://github.com/yourusername/e-shop-cloud-native.git)
-    cd e-shop-cloud-native
+    git clone https://github.com/Asterinos1/Dummy-E-Shop
+    cd Dummy-E-Shop
     ```
 
 2.  **Environment Setup**
@@ -54,7 +54,7 @@ Before running the application, ensure you have the following installed on your 
     ```
 
 2.  **Wait for Initialization**
-    * Wait approximately 30-60 seconds for Keycloak and Kafka to fully initialize.
+    * Wait for Keycloak and Kafka to fully initialize.
     * You can monitor the status using: `docker-compose logs -f keycloak kafka`
 
 3.  **Access the Application**
@@ -67,47 +67,16 @@ Before running the application, ensure you have the following installed on your 
     * **Seller:** Login with `seller1` / `seller1` (Can manage products).
     * **Customer:** Login with `customer1` / `customer1` (Can place orders).
 
-## Help
-
-**Common Issues:**
-
-* **Keycloak Connection Refused:**
-    Keycloak takes time to start. If the frontend redirects to an error page immediately, wait 30 seconds and refresh.
-    
-* **Kafka "Broker Not Available":**
-    If the services crash on startup, it is likely because Kafka wasn't ready. The `restart: always` or `healthcheck` in Docker Compose handles this, but you can manually restart a service:
-    ```bash
-    docker-compose restart product-service order-service
-    ```
-
-* **CORS Errors:**
-    If you see CORS errors in the browser console, ensure you are accessing the site via `localhost:3000` and not an IP address, as the Keycloak configuration expects `localhost`.
-
-* **Database Errors:**
-    If tables are missing, the initialization scripts might have failed. Check the logs:
-    ```bash
-    docker-compose logs db-products db-orders
-    ```
-
 ## Version History
-
-* **2(Current)**
-    * Added Apache Kafka for asynchronous order processing (Stock Check flow).
-    * Integrated Keycloak for full RBAC (Seller vs Customer roles).
-    * Refactored architecture into `services/` and `infrastructure/` directories.
-    * Fixed Docker networking and DNS resolution issues.
-* **1**
+* **OLD**
     * Initial release with basic Product and Order REST APIs.
     * Simple Frontend implementation.
     * Basic Docker Compose setup (No Messaging, No Auth).
+* **NEW(Current)**
+    * Added Apache Kafka for asynchronous order processing.
+    * Refactored architecture into `services/` and `infrastructure/` directories.
+    * Fixed Docker networking and DNS resolution issues.
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE.md file for details.
-
-## Acknowledgments
-
-* [Course Materials - Cloud/Fog Services (TUC)](https://www.tuc.gr)
-* [Keycloak Docker Documentation](https://www.keycloak.org/server/containers)
-* [KafkaJS Documentation](https://kafka.js.org/)
-* [awesome-readme](https://github.com/matiassingers/awesome-readme)
