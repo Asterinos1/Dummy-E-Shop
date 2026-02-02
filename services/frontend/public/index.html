@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e-Shop - Product List</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body id="homepage">
+    <h1 class="shop-title">E-SHOP</h1>
+
+    <div class="navbar">
+        <button id="index-btn" onclick="location.href='index.html'">Home</button>
+        <button id="cart-btn" onclick="location.href='cart.html'">Shopping Cart <span id="cart-count">0</span></button>
+        <button id="my-products-btn" onclick="location.href='my-products.html'">My Products</button>
+        <button id="orders-btn" onclick="location.href='orders.html'">Orders</button>
+        <button id="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="search-bar" placeholder="Search products..." onkeyup="searchProducts()">
+    </div>
+
+    <h1>Products</h1>
+    <ul id="product-list"></ul>
+
+    <script src="/library/keycloak.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

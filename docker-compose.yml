@@ -1,164 +1,181 @@
+version: '3.8'
+
+networks:
+  eshop-net:
+    driver: bridge
+
+volumes:
+  postgres_products_data:
+  postgres_orders_data:
+  postgres_keycloak_data:
+  kafka_data:
+  zookeeper_data:
+
 services:
-  #frontend container
-  server:
-    build:
-      context: .
-      dockerfile: Dockerfile  
-    ports:
-      - "3000:3000"
-    depends_on:
-      - eshop_db
-      - orders_db
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: eshop-zookeeper
     environment:
-      - DB_HOST=eshop_db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=asterinos
-      - DB_NAME=eshop_db
-      - ORDERS_DB_HOST=orders_db
-      - ORDERS_DB_PORT=5432
-      - ORDERS_DB_USER=postgres
-      - ORDERS_DB_PASSWORD=asterinos
-      - ORDERS_DB_NAME=orders_db
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - eshop-net
     volumes:
-      - ./keycloak.json:/usr/src/app/keycloak.json
+      - zookeeper_data:/var/lib/zookeeper/data
 
-  #container for eshop_db api
-  #adding env for kafka
-  api:
-    build:
-      context: ./api
-    ports:
-      - "5000:5000"
-    environment:
-      - DB_HOST=eshop_db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=asterinos
-      - DB_NAME=eshop_db
-      # this is new for kafka
-      - KAFKA_BROKER=kafka:9092
-      - KAFKA_TOPIC_ORDER=order-topic
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: eshop-kafka
     depends_on:
-      - eshop_db
-    # this is new for kafka
-    networks:
-      - kafka_network
-
-  #container for orders_db api
-  #adding env for kafka
-  api2:
-    build:
-      context: ./api2
+      - zookeeper
     ports:
-      - "5001:5001"
+      - "9094:9094" # External access if needed (optional)
     environment:
-      - DB_HOST=orders_db
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=asterinos
-      - DB_NAME=orders_db
-      # this is new.
-      - KAFKA_BROKER=kafka:9092
-      - KAFKA_TOPIC_ORDER=order-topic
-    depends_on:
-      - orders_db
-    # this is new for kafka
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
-      - kafka_network
+      - eshop-net
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  #container for eshop_db
-  eshop_db:
-    image: postgres:17
-    container_name: eshop_db
+  db-products:
+    image: postgres:15-alpine
+    container_name: db-products
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: asterinos
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-adminpassword}
       POSTGRES_DB: eshop_db
     volumes:
-      - eshop_db_data:/var/lib/postgresql/data
-      - ./init_eshop_db.sql:/docker-entrypoint-initdb.d/init.sql  
-    ports:
-      - "5432:5432"
+      - postgres_products_data:/var/lib/postgresql/data
+      # Auto-init script
+      - ./infrastructure/database/init_eshop_db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - eshop-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d eshop_db"]
+      interval: 5s
+      retries: 5
 
-  #container for orders_db
-  orders_db:
-    image: postgres:17
-    container_name: orders_db
+  db-orders:
+    image: postgres:15-alpine
+    container_name: db-orders
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: asterinos
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-adminpassword}
       POSTGRES_DB: orders_db
     volumes:
-      - orders_db_data:/var/lib/postgresql/data
-      - ./init_orders_db.sql:/docker-entrypoint-initdb.d/init.sql  
-    ports:
-      - "5433:5432"  
-    
-  #container for the keycloak and   
-  keycloak:
-    image: quay.io/keycloak/keycloak:latest
-    environment:
-      DB_VENDOR: postgres
-      DB_ADDR: keycloak_db
-      DB_DATABASE: keyclo ak
-      DB_USER: keycloak
-      DB_PASSWORD: keycloakpassword
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: adminpassword
-    command:
-      start-dev --import-realm
-    ports:
-      - "8080:8080"
-    depends_on:
-      - keycloak_db
-    volumes:
-      - ./realms:/opt/keycloak/data/import
-    
+      - postgres_orders_data:/var/lib/postgresql/data
+      # Auto-init script
+      - ./infrastructure/database/init_orders_db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - eshop-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d orders_db"]
+      interval: 5s
+      retries: 5
 
-  keycloak_db:
-    image: postgres:17
+  # Database for Keycloak
+  db-keycloak:
+    image: postgres:15-alpine
+    container_name: db-keycloak
     environment:
       POSTGRES_USER: keycloak
       POSTGRES_PASSWORD: keycloakpassword
       POSTGRES_DB: keycloak
     volumes:
-      - keycloak_db_data:/var/lib/postgresql/data
-
-  # containers for kafka/zookeeper
-  kafka:
-    image: bitnami/kafka:latest
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      ALLOW_PLAINTEXT_LISTENER: "yes"
-    depends_on:
-      zookeeper:
-        condition: service_healthy
+      - postgres_keycloak_data:/var/lib/postgresql/data
     networks:
-      - kafka_network 
+      - eshop-net
 
-  zookeeper:
-    image: bitnami/zookeeper:latest
-    ports:
-      - "2181:2181"
-    healthcheck:
-      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: keycloak
+    depends_on:
+      - db-keycloak
     environment:
-      ALLOW_ANONYMOUS_LOGIN: "yes" #temporary 
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db-keycloak/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloakpassword
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: adminpassword
+    ports:
+      - "8080:8080"
+    command: start-dev --import-realm
+    volumes:
+      # Mount the realm file for auto-import
+      - ./infrastructure/keycloak/eshop-realm.json:/opt/keycloak/data/import/realm.json
+    networks:
+      - eshop-net
 
-networks:
-  kafka_network:
+  product-service:
+    build: ./services/product-service
+    container_name: product-service
+    ports:
+      - "5000:5000" # Expose for Frontend access (Browser -> Host -> Container)
+    environment:
+      PORT: 5000
+      DB_HOST: db-products
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${DB_PASSWORD:-adminpassword}
+      DB_NAME: eshop_db
+      KAFKA_BROKER: kafka:9092
+      KEYCLOAK_URL: http://keycloak:8080
+    depends_on:
+      db-products:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks:
+      - eshop-net
 
-volumes:
-  eshop_db_data:
-  orders_db_data:
-  keycloak_db_data:
-  
+  # Order Service
+  order-service:
+    build: ./services/order-service
+    container_name: order-service
+    ports:
+      - "5001:5001" # Expose for Frontend access
+    environment:
+      PORT: 5001
+      DB_HOST: db-orders
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${DB_PASSWORD:-adminpassword}
+      DB_NAME: orders_db
+      KAFKA_BROKER: kafka:9092
+      KEYCLOAK_URL: http://keycloak:8080
+    depends_on:
+      db-orders:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    networks:
+      - eshop-net
+
+  # Frontend Service
+  frontend:
+    build: ./services/frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+    depends_on:
+      - product-service
+      - order-service
+    networks:
+      - eshop-net
